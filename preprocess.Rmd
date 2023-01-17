@@ -1,0 +1,145 @@
+---
+title: "Converting wide to long"
+output: html_notebook
+---
+
+Part1 (1/2)
+
+# Preparation
+You need to format the data by excel first.
+1. calculate average of blank
+2. subtracting average of blank values from the table)
+3. set value 0 for the unnecessary cell.
+4. save processed data as csv file
+
+# read csv file
+```{r}
+file.name.24 = "1108_24hr.csv"
+file.name.48 = "1108_48hr.csv"
+file.name.72 = "1108_72hr.csv"
+data.24 <- read.csv(paste0("~/Desktop/", file.name.24))
+data.48 <- read.csv(paste0("~/Desktop/", file.name.48))
+data.72 <- read.csv(paste0("~/Desktop/", file.name.72))
+
+data.24
+data.48
+data.72
+```
+
+# Set row name
+```{r}
+setRowCol<- function(data) {
+  colnames(data) <- c("row", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12")
+  data$row <- factor(data$row)
+  return (data)
+} 
+
+data.24 <- setRowCol(data.24)
+data.48 <- setRowCol(data.48)
+data.72 <- setRowCol(data.72)
+```
+
+# check data
+
+```{r}
+data.24
+data.48
+data.72
+```
+
+
+# convert wide to long
+```{r}
+# install.packages("tidyverse")
+library("tidyverse")
+
+convert.to.long <- function(data) {
+  data.long <- gather(data, key="column", value="OD value", 2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)
+  return (data.long)
+}
+
+data.long.24 <- convert.to.long(data.24)
+data.long.48 <- convert.to.long(data.48)
+data.long.72 <- convert.to.long(data.72)
+```
+
+# check 
+```{r}
+data.long.24
+data.long.48
+data.long.72
+```
+
+
+# add data
+```{r}
+add.data <- function(data, hour) {
+  
+  # set data by row
+  data["density"] = 0
+  row <- unique(data$row)
+  for (i in 1:length(row)) {
+    data[data$row == row[i],"density"] = i * 1000 
+  }
+  
+  # set data by column
+  data["cell"] = ""
+  column <- unique(data$column)
+  for (i in 1:length(column)) {
+    if (i <= 6) {
+      data[data$column == i,"cell"] = "WT"
+    } else {
+      data[data$column == i,"cell"] = "KO"
+    }
+  }
+  
+  # set hour
+  data["hour"] = hour
+  
+  return (data)
+}
+
+data.long.24 <- add.data(data.long.24, 24)
+data.long.48 <- add.data(data.long.48, 48)
+data.long.72 <- add.data(data.long.72, 72)
+```
+
+
+# re check data
+```{r}
+data.long.24
+data.long.48
+data.long.72
+```
+
+# join data
+
+```{r}
+data.total <- rbind(data.long.24, data.long.48, data.long.72)
+```
+
+# delete unnecessary data
+
+```{r}
+delete.data <- function(data) {
+  data <- subset(data, data$`OD value` != 0) # delete 0 value cells
+  return (data)
+}
+
+data.total <- delete.data(data.total)
+data.total[, c('row', 'column')] <- list(NULL) # delete 'row', 'column' columns
+data.final <- data.total
+```
+
+# check final data
+```{r}
+data.final
+```
+
+# write to file 
+
+```{r}
+file.name <- "1108_24hr_to_72hr.csv"
+write_csv(data.final, paste0("~/Desktop/", file.name))
+```
+

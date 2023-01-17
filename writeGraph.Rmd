@@ -1,0 +1,106 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Part2 (2/2)
+
+Write graph
+
+# set directory
+
+```{r}
+# directory choose
+dir.choose <- function() {
+  system("osascript -e 'tell app \"RStudio\" to POSIX path of (choose folder with prompt \"Choose Folder:\")' > /tmp/R_folder",
+         intern = FALSE, ignore.stderr = TRUE)
+  p <- system("cat /tmp/R_folder && rm -f /tmp/R_folder", intern = TRUE)
+  return(ifelse(length(p), p, NA))
+}
+
+local <- dir.choose()
+setwd(local)
+```
+
+# read file
+
+```{r}
+file.name <- "1108_24hr_to_72hr.csv"
+total.data <- read.csv(file.name)
+total.data
+```
+
+# change numeric to character for visualization 
+https://mom-neuroscience.com/r-datatype/
+
+```{r}
+library(dplyr)
+total.data %>% dplyr::mutate(density = as.character(density), hour = as.character(hour)) -> graph.data
+
+graph.data[,'condition'] = paste0(graph.data[,'cell'], ' ', graph.data[,'density'])
+graph.data
+```
+
+# Write graph
+https://htsuda.net/stats/plot.html
+
+
+```{r}
+# install.packages("ggplot2")
+library(ggplot2)
+
+# line only
+#ggplot(graph.data, aes(x=hour, y=OD.value, color = density, group = density)) + 
+#  stat_summary( fun.y = "mean", geom = "line")
+
+# add dot and error bar
+#ggplot(graph.data, aes(x=hour, y=OD.value, color = density, group = density)) + 
+#  stat_summary( fun.y = "mean", geom = "line") +
+#  stat_summary( fun.data = mean_cl_normal, geom = "errorbar", width = 0.1 ) +
+#  stat_summary( fun.y = "mean", geom = "point", size = 3)
+
+write.graph <- function(data) {
+  pd = position_dodge( width = 0.15 )
+  # add dot and error bar
+  ggplot(data, aes(x=hour, y=OD.value, color = condition, group = condition)) + 
+    stat_summary( fun.y = "mean", geom = "line", position = pd) +
+    stat_summary( fun.data = mean_cl_normal, geom = "errorbar", width = 0.1, position = pd ) +
+    stat_summary( fun.y = "mean", geom = "point", size = 3, position = pd)
+}
+
+write.graph(graph.data)
+
+subset.data <- function(data, den) {
+  new.data <- subset(data, data$density == den)
+  return (new.data)
+}
+
+densities <- unique(graph.data$density)
+
+graph <- function() {
+  for ( density in densities ) {
+    data <- subset.data(graph.data, density)
+    write.graph(data)
+  }
+}
+
+data1000 <- subset.data(graph.data, "1000")
+data2000 <- subset.data(graph.data, "2000")
+data3000 <- subset.data(graph.data, "3000")
+data4000 <- subset.data(graph.data, "4000")
+data5000 <- subset.data(graph.data, "5000")
+data6000 <- subset.data(graph.data, "6000")
+data7000 <- subset.data(graph.data, "7000")
+data8000 <- subset.data(graph.data, "8000")
+
+layout(matrix(1:3, ncol=3))
+write.graph(data1000)
+write.graph(data2000)
+write.graph(data3000)
+write.graph(data4000)
+write.graph(data5000)
+write.graph(data6000)
+write.graph(data7000)
+write.graph(data8000)
+
+```
